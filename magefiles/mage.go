@@ -10,6 +10,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"sort"
 	"strings"
 )
 
@@ -115,8 +116,15 @@ func Build() (err error) {
 	_, _ = weJs.WriteString("\n")
 	_, _ = weJs.WriteString("switch version{\n")
 
-	for k, tags := range shaMapping {
+	var shaKeys []string
+	for k := range shaMapping {
+		shaKeys = append(shaKeys, k)
+	}
+	sort.Strings(shaKeys)
+
+	for _, k := range shaKeys {
 		_, _ = weJs.WriteString("\n")
+		tags := shaMapping[k]
 		caseStatement := fmt.Sprintf("case \"%s\" :\n", strings.Join(tags, `", "`))
 		_, _ = weJs.WriteString(caseStatement)
 		_, _ = weJs.WriteString(fmt.Sprintf("return []byte(%q), nil\n", contentMapping[k]))
@@ -178,6 +186,8 @@ func Build() (err error) {
 		fmt.Println("err commit")
 		return
 	}
+
+	// TODO: bump version tag before commit
 
 	fmt.Println("git push")
 	if err = sh.Run("git", "push"); err != nil {
