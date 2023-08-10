@@ -56,7 +56,6 @@ func Build() (err error) {
 		tagName := scanner.Text()
 		if strings.HasPrefix(tagName, "go") {
 			if tagName > "go1.14" {
-				fmt.Println("adding go tag", tagName)
 				goTags = append(goTags, tagName)
 			}
 		}
