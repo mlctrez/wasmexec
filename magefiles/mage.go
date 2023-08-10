@@ -13,9 +13,9 @@ import (
 	"strings"
 )
 
-var Default = Run
+var Default = Build
 
-func Run() (err error) {
+func Build() (err error) {
 
 	var projectDir string
 	projectDir, err = os.Getwd()
