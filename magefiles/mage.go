@@ -149,8 +149,8 @@ func Build() (err error) {
 	}
 
 	fmt.Println("oldSum", oldSum, "newSum", newSum)
-	fmt.Println("old", string(oldContents))
-	fmt.Println("new", string(weJsFormatted))
+	//fmt.Println("old", string(oldContents))
+	//fmt.Println("new", string(weJsFormatted))
 
 	if newSum == oldSum {
 		fmt.Println("new and old sum match, exiting")
