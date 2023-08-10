@@ -148,19 +148,25 @@ func Build() (err error) {
 
 	fmt.Println("writing new file version")
 	if err = os.WriteFile("versions.go", weJsFormatted, 0644); err != nil {
-		fmt.Println("wrote new versions.go")
+		fmt.Println("err wrote new versions.go")
 		return
 	}
 
 	fmt.Println("git add version.go")
 	if err = sh.Run("git", "add", "versions.go"); err != nil {
-		fmt.Println("added versions.go")
+		fmt.Println("err added versions.go")
+		return
+	}
+
+	fmt.Println("git commit")
+	if err = sh.Run("git", "commit"); err != nil {
+		fmt.Println("err commit")
 		return
 	}
 
 	fmt.Println("git push")
 	if err = sh.Run("git", "push"); err != nil {
-		fmt.Println("pushed versions.go")
+		fmt.Println("err git push")
 		return
 	}
 
