@@ -171,7 +171,7 @@ func Build() (err error) {
 	}
 
 	fmt.Println("git commit")
-	if err = sh.Run("git", "commit"); err != nil {
+	if err = sh.Run("git", "commit", "-m", "actions commit"); err != nil {
 		fmt.Println("err commit")
 		return
 	}
