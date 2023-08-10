@@ -158,6 +158,18 @@ func Build() (err error) {
 		return
 	}
 
+	fmt.Println("git config --global user.email \"you@example.com\"")
+	if err = sh.Run("git", "config", "--global", "user.email", "mlctrez@gmail.com"); err != nil {
+		fmt.Println("err user.email")
+		return
+	}
+
+	fmt.Println("git config --global user.name mlctrez")
+	if err = sh.Run("git", "config", "--global", "user.name", "mlctrez"); err != nil {
+		fmt.Println("err user.name")
+		return
+	}
+
 	fmt.Println("git commit")
 	if err = sh.Run("git", "commit"); err != nil {
 		fmt.Println("err commit")
