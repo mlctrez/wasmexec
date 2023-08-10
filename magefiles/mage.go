@@ -56,7 +56,7 @@ func Build() (err error) {
 	for scanner.Scan() {
 		tagName := scanner.Text()
 		if strings.HasPrefix(tagName, "go") {
-			if tagName > "go1.14" {
+			if tagName > "go1.15" {
 				goTags = append(goTags, tagName)
 			}
 		}
@@ -147,6 +147,7 @@ func Build() (err error) {
 	if err != nil {
 		panic(err)
 	}
+	_ = oldContents
 
 	fmt.Println("oldSum", oldSum, "newSum", newSum)
 	//fmt.Println("old", string(oldContents))
