@@ -134,12 +134,15 @@ func Build() (err error) {
 	newSum := shaContents(weJsFormatted)
 
 	var oldSum string
-	_, oldSum, err = readFileWithSha("versions.go")
+	var oldContents []byte
+	oldContents, oldSum, err = readFileWithSha("versions.go")
 	if err != nil {
 		panic(err)
 	}
 
 	fmt.Println("oldSum", oldSum, "newSum", newSum)
+	fmt.Println("old", string(oldContents))
+	fmt.Println("new", string(weJsFormatted))
 
 	if newSum == oldSum {
 		fmt.Println("new and old sum match, exiting")
