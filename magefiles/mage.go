@@ -140,18 +140,22 @@ func Build() (err error) {
 	}
 
 	if newSum == oldSum {
+		fmt.Println("new and old sum match, exiting")
 		return
 	}
 
 	if err = os.WriteFile("versions.go", weJsFormatted, 0644); err != nil {
+		fmt.Println("wrote new versions.go")
 		return
 	}
 
 	if err = sh.Run("git", "add", "versions.go"); err != nil {
+		fmt.Println("added versions.go")
 		return
 	}
 
 	if err = sh.Run("git", "push"); err != nil {
+		fmt.Println("pushed versions.go")
 		return
 	}
 
