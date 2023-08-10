@@ -83,12 +83,9 @@ func Build() (err error) {
 		}
 
 		var wasmExecBytes []byte
-		wasmExecBytes, err = os.ReadFile(wasmExecFile)
+		var shaSum string
 
-		h := sha256.New()
-		h.Write(wasmExecBytes)
-		bs := h.Sum(nil)
-		shaSum := fmt.Sprintf("%x", bs)
+		wasmExecBytes, shaSum, err = readFileWithSha(wasmExecFile)
 
 		if m, ok := shaMapping[shaSum]; ok {
 			m = append(m, tag)
@@ -127,14 +124,55 @@ func Build() (err error) {
 
 	_, _ = weJs.WriteString("\n")
 	_, _ = weJs.WriteString("default :\n")
-	_, _ = weJs.WriteString("return nil, fmt.Errorf(\"unknown version %s\", version)\n")
+	_, _ = weJs.WriteString("return nil, fmt.Errorf(\"unhandled version %s\", version)\n")
 	_, _ = weJs.WriteString("}\n")
 	_, _ = weJs.WriteString("}\n")
 
 	var weJsFormatted []byte
 	weJsFormatted, err = format.Source(weJs.Bytes())
 
-	err = os.WriteFile("versions.go", weJsFormatted, 0644)
+	newSum := shaContents(weJsFormatted)
 
+	var oldSum string
+	_, oldSum, err = readFileWithSha("versions.go")
+	if err != nil {
+		panic(err)
+	}
+
+	if newSum == oldSum {
+		return
+	}
+
+	if err = os.WriteFile("versions.go", weJsFormatted, 0644); err != nil {
+		return
+	}
+
+	if err = sh.Run("git", "add", "versions.go"); err != nil {
+		return
+	}
+
+	if err = sh.Run("git", "push"); err != nil {
+		return
+	}
+
+	return
+}
+
+func readFileWithSha(path string) (contents []byte, sum string, err error) {
+
+	if contents, err = os.ReadFile(path); err != nil {
+		return
+	}
+
+	sum = shaContents(contents)
+
+	return
+}
+
+func shaContents(contents []byte) (sum string) {
+	h := sha256.New()
+	h.Write(contents)
+	bs := h.Sum(nil)
+	sum = fmt.Sprintf("%x", bs)
 	return
 }
