@@ -55,7 +55,7 @@ func Build() (err error) {
 	for scanner.Scan() {
 		tagName := scanner.Text()
 		if strings.HasPrefix(tagName, "go") {
-			if tagName > "go1.16" {
+			if tagName > "go1.14" {
 				goTags = append(goTags, tagName)
 			}
 		}
