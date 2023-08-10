@@ -140,6 +140,8 @@ func Build() (err error) {
 		panic(err)
 	}
 
+	fmt.Println("oldSum", oldSum, "newSum", newSum)
+
 	if newSum == oldSum {
 		fmt.Println("new and old sum match, exiting")
 		return
