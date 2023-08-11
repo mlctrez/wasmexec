@@ -28,3 +28,4 @@ jobs:
         with:
           version: latest
           args: build
+          github_token: ${{ secrets.ACTIONS_TOKEN }}

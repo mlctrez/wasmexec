@@ -87,7 +87,7 @@ func Build() (err error) {
 		Author: &object.Signature{Name: "mlctrez", Email: "mlctrez@gmail.com", When: time.Now()},
 	})
 
-	err = repo.Push(&git.PushOptions{Auth: &http.BasicAuth{Username: os.Getenv("ACTIONS_TOKEN")}})
+	err = repo.Push(&git.PushOptions{Auth: &http.BasicAuth{Username: os.Getenv("GITHUB_TOKEN")}})
 	if err != nil {
 		return
 	}
