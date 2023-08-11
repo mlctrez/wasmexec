@@ -4,28 +4,21 @@ import (
 	"bytes"
 	"crypto/sha256"
 	"fmt"
+	"github.com/go-git/go-git/v5"
 	"github.com/go-git/go-git/v5/plumbing"
-	"github.com/magefile/mage/sh"
+	"github.com/go-git/go-git/v5/plumbing/object"
+	"github.com/go-git/go-git/v5/plumbing/transport/http"
 	"github.com/mlctrez/wasmexec/gitutil"
 	"go/format"
 	"os"
 	"sort"
 	"strings"
+	"time"
 )
 
 var Default = Build
 
 func Build() (err error) {
-
-	var file []byte
-	file, err = os.ReadFile(".git/config")
-	if err != nil {
-		return
-	}
-
-	fmt.Println(string(file))
-
-	os.Exit(0)
 
 	gu := gitutil.New("https://github.com/golang/go", "/tmp/golang")
 
@@ -76,29 +69,26 @@ func Build() (err error) {
 		return
 	}
 
-	if err = sh.Run("git", "add", "versions.go"); err != nil {
+	var repo *git.Repository
+	if repo, err = git.PlainOpen("."); err != nil {
 		return
 	}
 
-	if err = sh.Run("git", "config", "--global", "user.email", "mlctrez@gmail.com"); err != nil {
-		fmt.Println("err user.email")
-		return
-	}
-	if err = sh.Run("git", "config", "--global", "user.name", "mlctrez"); err != nil {
-		fmt.Println("err user.name")
+	var worktree *git.Worktree
+	if worktree, err = repo.Worktree(); err != nil {
 		return
 	}
 
-	if err = sh.Run("git", "commit", "-m", "actions commit"); err != nil {
-		fmt.Println("err commit")
+	if _, err = worktree.Add("versions.go"); err != nil {
 		return
 	}
 
-	// TODO: bump version tag before commit
+	_, err = worktree.Commit("github actions update", &git.CommitOptions{
+		Author: &object.Signature{Name: "mlctrez", Email: "mlctrez@gmail.com", When: time.Now()},
+	})
 
-	fmt.Println("git push")
-	if err = sh.Run("git", "push"); err != nil {
-		fmt.Println("err git push")
+	err = repo.Push(&git.PushOptions{Auth: &http.BasicAuth{Username: os.Getenv("ACTIONS_TOKEN")}})
+	if err != nil {
 		return
 	}
 
