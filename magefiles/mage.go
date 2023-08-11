@@ -7,11 +7,14 @@ import (
 	"github.com/go-git/go-git/v5"
 	"github.com/go-git/go-git/v5/plumbing"
 	"github.com/go-git/go-git/v5/plumbing/object"
+	"github.com/go-git/go-git/v5/plumbing/storer"
 	"github.com/go-git/go-git/v5/plumbing/transport/http"
 	"github.com/mlctrez/wasmexec/gitutil"
+	"github.com/rogpeppe/go-internal/semver"
 	"go/format"
 	"os"
 	"sort"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -19,6 +22,54 @@ import (
 var Default = Build
 
 func Build() (err error) {
+	tag, err := incrementMinor()
+	if err != nil {
+		return
+	}
+	fmt.Println(tag)
+	return
+}
+
+func incrementMinor() (tag string, err error) {
+	var repo *git.Repository
+	if repo, err = git.PlainOpen("."); err != nil {
+		return
+	}
+
+	var tags storer.ReferenceIter
+	tags, err = repo.Tags()
+	var sortedTags []string
+	err = tags.ForEach(func(reference *plumbing.Reference) error {
+		if semver.IsValid(reference.Name().Short()) {
+			sortedTags = append(sortedTags, reference.Name().Short())
+		}
+		return nil
+	})
+	if err != nil {
+		return
+	}
+
+	sort.SliceStable(sortedTags, func(i, j int) bool {
+		return semver.Compare(sortedTags[i], sortedTags[j]) > 0
+	})
+
+	latest := sortedTags[0]
+
+	split := strings.Split(latest, ".")
+
+	atoi, err := strconv.Atoi(split[2])
+	if err != nil {
+		return
+	}
+
+	split[2] = fmt.Sprintf("%s", fmt.Sprintf("%d", atoi+1))
+
+	tag = fmt.Sprintf("v%s.%s.%s", split[0], split[1], split[2])
+
+	return
+}
+
+func BuildOld() (err error) {
 
 	gu := gitutil.New("https://github.com/golang/go", "/tmp/golang")
 
@@ -37,9 +88,11 @@ func Build() (err error) {
 	var contentMapping = make(map[string][]byte)
 
 	for _, ref := range refs {
-		if ref.Name().Short() != "go1.21.0" {
+
+		if !strings.HasPrefix(ref.Name().Short(), "go1.2") {
 			continue
 		}
+
 		var content []byte
 		content, err = gu.Contents(wasmExecPath, ref)
 		if os.IsNotExist(err) {
@@ -76,24 +129,31 @@ func Build() (err error) {
 	if repo, err = git.PlainOpen("."); err != nil {
 		return
 	}
-
 	var worktree *git.Worktree
 	if worktree, err = repo.Worktree(); err != nil {
 		return
 	}
-
 	if _, err = worktree.Add("versions.go"); err != nil {
+		return
+	}
+
+	var newTag string
+	if newTag, err = incrementMinor(); err != nil {
+		return
+	}
+	var head *plumbing.Reference
+	if head, err = repo.Head(); err != nil {
+		return
+	}
+
+	opts := &git.CreateTagOptions{Message: newTag}
+	if _, err = repo.CreateTag(newTag, head.Hash(), opts); err != nil {
 		return
 	}
 
 	_, err = worktree.Commit("github actions update", &git.CommitOptions{
 		Author: &object.Signature{Name: "mlctrez", Email: "mlctrez@gmail.com", When: time.Now()},
 	})
-
-	environ := os.Environ()
-	for _, s := range environ {
-		fmt.Println(s)
-	}
 
 	err = repo.Push(&git.PushOptions{Auth: &http.BasicAuth{Username: os.Getenv("INPUT_GITHUB_TOKEN")}})
 	if err != nil {
