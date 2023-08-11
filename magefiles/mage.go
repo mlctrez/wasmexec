@@ -95,7 +95,7 @@ func Build() (err error) {
 		fmt.Println(s)
 	}
 
-	err = repo.Push(&git.PushOptions{Auth: &http.BasicAuth{Username: os.Getenv("GITHUB_TOKEN")}})
+	err = repo.Push(&git.PushOptions{Auth: &http.BasicAuth{Username: os.Getenv("INPUT_GITHUB_TOKEN")}})
 	if err != nil {
 		return
 	}
