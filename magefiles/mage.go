@@ -85,6 +85,7 @@ func Build() (err error) {
 		return
 	}
 
+	fmt.Println("incrementMinor")
 	var newTag string
 	if newTag, err = incrementMinor(); err != nil {
 		return
@@ -217,6 +218,9 @@ func incrementMinor() (tag string, err error) {
 	sort.SliceStable(sortedTags, func(i, j int) bool {
 		return semver.Compare(sortedTags[i], sortedTags[j]) > 0
 	})
+
+	fmt.Println("sorted tags")
+	fmt.Println(strings.Join(sortedTags, ","))
 
 	latest := sortedTags[0]
 
