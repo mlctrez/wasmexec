@@ -17,6 +17,16 @@ var Default = Build
 
 func Build() (err error) {
 
+	var file []byte
+	file, err = os.ReadFile(".git/config")
+	if err != nil {
+		return
+	}
+
+	fmt.Println(string(file))
+
+	os.Exit(0)
+
 	gu := gitutil.New("https://github.com/golang/go", "/tmp/golang")
 
 	if err = gu.CloneOrOpen(); err != nil {
