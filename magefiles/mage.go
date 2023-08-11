@@ -22,54 +22,6 @@ import (
 var Default = Build
 
 func Build() (err error) {
-	tag, err := incrementMinor()
-	if err != nil {
-		return
-	}
-	fmt.Println(tag)
-	return
-}
-
-func incrementMinor() (tag string, err error) {
-	var repo *git.Repository
-	if repo, err = git.PlainOpen("."); err != nil {
-		return
-	}
-
-	var tags storer.ReferenceIter
-	tags, err = repo.Tags()
-	var sortedTags []string
-	err = tags.ForEach(func(reference *plumbing.Reference) error {
-		if semver.IsValid(reference.Name().Short()) {
-			sortedTags = append(sortedTags, reference.Name().Short())
-		}
-		return nil
-	})
-	if err != nil {
-		return
-	}
-
-	sort.SliceStable(sortedTags, func(i, j int) bool {
-		return semver.Compare(sortedTags[i], sortedTags[j]) > 0
-	})
-
-	latest := sortedTags[0]
-
-	split := strings.Split(latest, ".")
-
-	atoi, err := strconv.Atoi(split[2])
-	if err != nil {
-		return
-	}
-
-	split[2] = fmt.Sprintf("%s", fmt.Sprintf("%d", atoi+1))
-
-	tag = fmt.Sprintf("v%s.%s.%s", split[0], split[1], split[2])
-
-	return
-}
-
-func BuildOld() (err error) {
 
 	gu := gitutil.New("https://github.com/golang/go", "/tmp/golang")
 
@@ -88,10 +40,6 @@ func BuildOld() (err error) {
 	var contentMapping = make(map[string][]byte)
 
 	for _, ref := range refs {
-
-		if !strings.HasPrefix(ref.Name().Short(), "go1.2") {
-			continue
-		}
 
 		var content []byte
 		content, err = gu.Contents(wasmExecPath, ref)
@@ -244,5 +192,45 @@ func shaContents(contents []byte) (sum string) {
 	h.Write(contents)
 	bs := h.Sum(nil)
 	sum = fmt.Sprintf("%x", bs)
+	return
+}
+
+func incrementMinor() (tag string, err error) {
+	var repo *git.Repository
+	if repo, err = git.PlainOpen("."); err != nil {
+		return
+	}
+
+	var tags storer.ReferenceIter
+	tags, err = repo.Tags()
+	var sortedTags []string
+	err = tags.ForEach(func(reference *plumbing.Reference) error {
+		if semver.IsValid(reference.Name().Short()) {
+			sortedTags = append(sortedTags, reference.Name().Short())
+		}
+		return nil
+	})
+	if err != nil {
+		return
+	}
+
+	sort.SliceStable(sortedTags, func(i, j int) bool {
+		return semver.Compare(sortedTags[i], sortedTags[j]) > 0
+	})
+
+	latest := sortedTags[0]
+
+	split := strings.Split(latest, ".")
+
+	var i int
+	i, err = strconv.Atoi(split[2])
+	if err != nil {
+		return
+	}
+
+	split[2] = fmt.Sprintf("%s", fmt.Sprintf("%d", i+1))
+
+	tag = fmt.Sprintf("v%s.%s.%s", split[0], split[1], split[2])
+
 	return
 }
