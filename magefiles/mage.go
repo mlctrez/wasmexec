@@ -1,15 +1,14 @@
 package main
 
 import (
-	"bufio"
 	"bytes"
 	"crypto/sha256"
 	"fmt"
+	"github.com/go-git/go-git/v5/plumbing"
 	"github.com/magefile/mage/sh"
+	"github.com/mlctrez/wasmexec/gitutil"
 	"go/format"
 	"os"
-	"os/exec"
-	"path/filepath"
 	"sort"
 	"strings"
 )
@@ -18,171 +17,68 @@ var Default = Build
 
 func Build() (err error) {
 
-	var projectDir string
-	projectDir, err = os.Getwd()
-	if err != nil {
+	gu := gitutil.New("https://github.com/golang/go", "/tmp/golang")
+
+	if err = gu.CloneOrOpen(); err != nil {
 		return
 	}
 
-	tempDir := "/tmp/gitTemp"
-	repoDir := filepath.Join(tempDir, "go")
 	wasmExecPath := "misc/wasm/wasm_exec.js"
-	wasmExecFile := filepath.Join(repoDir, wasmExecPath)
 
-	if err = os.MkdirAll(tempDir, 0755); err != nil {
+	var refs []*plumbing.Reference
+	if refs, err = gu.Tags("go"); err != nil {
 		return
-	}
-	if err = os.Chdir(tempDir); err != nil {
-		return
-	}
-	if _, err = os.Stat(filepath.Join(repoDir, ".git")); os.IsNotExist(err) {
-		err = sh.Run("git", "clone", "https://github.com/golang/go")
-	}
-	if err != nil {
-		return
-	}
-	if err = os.Chdir(repoDir); err != nil {
-		return
-	}
-	if err = sh.Run("git", "fetch"); err != nil {
-		return
-	}
-	var output string
-	if output, err = sh.Output("git", "tag"); err != nil {
-		return
-	}
-	var goTags []string
-	scanner := bufio.NewScanner(bytes.NewBufferString(output))
-	for scanner.Scan() {
-		tagName := scanner.Text()
-		if strings.HasPrefix(tagName, "go") {
-			if tagName > "go1.15" {
-				goTags = append(goTags, tagName)
-			}
-		}
 	}
 
-	shaMapping := map[string][]string{}
-	contentMapping := map[string][]byte{}
+	var shaMapping = make(map[string]string)
+	var contentMapping = make(map[string][]byte)
 
-	for _, tag := range goTags {
-
-		checkout := exec.Command("git", "checkout", tag, wasmExecPath)
-		var out []byte
-		out, err = checkout.CombinedOutput()
-		if err != nil {
-			if strings.Contains(string(out), "did not match any file(s) known to git") {
-				continue
-			}
-			fmt.Println(tag, string(out))
-			return err
-		}
-
-		_, err = os.Stat(wasmExecFile)
+	for _, ref := range refs {
+		var content []byte
+		content, err = gu.Contents(wasmExecPath, ref)
 		if os.IsNotExist(err) {
 			continue
 		}
-
-		var wasmExecBytes []byte
-		var shaSum string
-
-		wasmExecBytes, shaSum, err = readFileWithSha(wasmExecFile)
-
-		if m, ok := shaMapping[shaSum]; ok {
-			m = append(m, tag)
-			shaMapping[shaSum] = m
-		} else {
-			shaMapping[shaSum] = []string{tag}
-		}
-		contentMapping[shaSum] = wasmExecBytes
-
+		fmt.Printf("getting content for ref %s\n", ref.Name().Short())
+		sum := shaContents(content)
+		contentMapping[sum] = content
+		shaMapping[ref.Name().Short()] = sum
 	}
 
-	if err = os.Chdir(projectDir); err != nil {
+	var wasmExecContent []byte
+	if wasmExecContent, err = buildWasmExec(shaMapping, contentMapping); err != nil {
 		return
 	}
 
-	weJs := bytes.NewBufferString("")
-
-	_, _ = weJs.WriteString("package wasmexec\n")
-	_, _ = weJs.WriteString("import \"fmt\"\n")
-	_, _ = weJs.WriteString("import \"runtime\"\n")
-
-	_, _ = weJs.WriteString("func Current() (content []byte, err error) {\n")
-	_, _ = weJs.WriteString("return Version(runtime.Version())\n")
-	_, _ = weJs.WriteString("}\n\n")
-
-	_, _ = weJs.WriteString("func Version(version string) (content []byte, err error) {\n")
-	_, _ = weJs.WriteString("\n")
-	_, _ = weJs.WriteString("switch version{\n")
-
-	var shaKeys []string
-	for k := range shaMapping {
-		shaKeys = append(shaKeys, k)
-	}
-	sort.Strings(shaKeys)
-
-	for _, k := range shaKeys {
-		_, _ = weJs.WriteString("\n")
-		tags := shaMapping[k]
-		caseStatement := fmt.Sprintf("case \"%s\" :\n", strings.Join(tags, `", "`))
-		_, _ = weJs.WriteString(caseStatement)
-		_, _ = weJs.WriteString(fmt.Sprintf("return []byte(%q), nil\n", contentMapping[k]))
-	}
-
-	_, _ = weJs.WriteString("\n")
-	_, _ = weJs.WriteString("default :\n")
-	_, _ = weJs.WriteString("return nil, fmt.Errorf(\"unhandled version %s\", version)\n")
-	_, _ = weJs.WriteString("}\n")
-	_, _ = weJs.WriteString("}\n")
-
-	var weJsFormatted []byte
-	weJsFormatted, err = format.Source(weJs.Bytes())
-
-	newSum := shaContents(weJsFormatted)
+	newSum := shaContents(wasmExecContent)
 
 	var oldSum string
-	var oldContents []byte
-	oldContents, oldSum, err = readFileWithSha("versions.go")
-	if err != nil {
-		panic(err)
+	if _, oldSum, err = readFileWithSha("versions.go"); err != nil {
+		return
 	}
-	_ = oldContents
-
-	fmt.Println("oldSum", oldSum, "newSum", newSum)
-	//fmt.Println("old", string(oldContents))
-	//fmt.Println("new", string(weJsFormatted))
 
 	if newSum == oldSum {
-		fmt.Println("new and old sum match, exiting")
+		fmt.Println("no changes to file, exiting")
 		return
 	}
 
-	fmt.Println("writing new file version")
-	if err = os.WriteFile("versions.go", weJsFormatted, 0644); err != nil {
-		fmt.Println("err wrote new versions.go")
+	if err = os.WriteFile("versions.go", wasmExecContent, 0644); err != nil {
 		return
 	}
 
-	fmt.Println("git add version.go")
 	if err = sh.Run("git", "add", "versions.go"); err != nil {
-		fmt.Println("err added versions.go")
 		return
 	}
 
-	fmt.Println("git config --global user.email \"you@example.com\"")
 	if err = sh.Run("git", "config", "--global", "user.email", "mlctrez@gmail.com"); err != nil {
 		fmt.Println("err user.email")
 		return
 	}
-
-	fmt.Println("git config --global user.name mlctrez")
 	if err = sh.Run("git", "config", "--global", "user.name", "mlctrez"); err != nil {
 		fmt.Println("err user.name")
 		return
 	}
 
-	fmt.Println("git commit")
 	if err = sh.Run("git", "commit", "-m", "actions commit"); err != nil {
 		fmt.Println("err commit")
 		return
@@ -197,6 +93,71 @@ func Build() (err error) {
 	}
 
 	return
+}
+
+type SourceFile struct {
+	buf *bytes.Buffer
+}
+
+func (sf *SourceFile) line(t string) *SourceFile {
+	_, _ = sf.buf.WriteString(t + "\n")
+	return sf
+}
+
+func (sf *SourceFile) format() (content []byte, err error) {
+	return format.Source(sf.buf.Bytes())
+}
+
+func buildWasmExec(shaMapping map[string]string, contentMapping map[string][]byte) (content []byte, err error) {
+
+	sf := &SourceFile{&bytes.Buffer{}}
+
+	sf.line("package wasmexec")
+	sf.line("// generated by https://github.com/mlctrez/wasmexec").line("")
+	sf.line("import (").line(`"fmt"`).line(`"runtime"`).line(")")
+
+	sf.line("func Current() (content []byte, err error) {")
+	sf.line("return Version(runtime.Version())")
+	sf.line("}").line("")
+
+	sf.line("func Version(version string) (content []byte, err error) {").line("")
+
+	sf.line("if contentFunc, ok := versionMap[version]; ok {")
+	sf.line("content = []byte(contentFunc())")
+	sf.line("}else{")
+	sf.line(`err = fmt.Errorf("unsupported version %q", version)`)
+	sf.line("}").line("")
+
+	sf.line("return")
+	sf.line("}").line("")
+
+	var cmKeys []string
+	for s := range contentMapping {
+		cmKeys = append(cmKeys, s)
+	}
+	sort.Strings(cmKeys)
+
+	for _, k := range cmKeys {
+		sf.line(fmt.Sprintf("const %s = %q", shortSha(k), contentMapping[k]))
+	}
+
+	var goVersions []string
+	for k := range shaMapping {
+		goVersions = append(goVersions, k)
+	}
+	sort.Strings(goVersions)
+
+	sf.line("var versionMap = map[string]func()string{")
+	for _, goVersion := range goVersions {
+		sf.line(fmt.Sprintf("%q: func() string { return %s },", goVersion, shortSha(shaMapping[goVersion])))
+	}
+	sf.line("}")
+
+	return sf.format()
+}
+
+func shortSha(in string) string {
+	return "sha" + strings.ToUpper(in[0:4]+in[64-4:])
 }
 
 func readFileWithSha(path string) (contents []byte, sum string, err error) {

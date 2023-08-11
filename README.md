@@ -13,7 +13,15 @@ This module provides a means to source the correct wasm_exec.js content programm
 
 ```go
 
-content, err = wejs.Current()
+http.HandleFunc("/wasm_exec.js", func(writer http.ResponseWriter, request *http.Request) {
+    content, err := wasmexec.Current()
+    if err != nil {
+    writer.WriteHeader(http.StatusInternalServerError)
+        return
+    }
+    writer.Header().Set("Content-Type", "application/javascript")
+    _, _ = writer.Write(content)
+})
 
 ```
 
