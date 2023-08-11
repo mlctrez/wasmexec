@@ -37,6 +37,9 @@ func Build() (err error) {
 	var contentMapping = make(map[string][]byte)
 
 	for _, ref := range refs {
+		if ref.Name().Short() != "go1.21.0" {
+			continue
+		}
 		var content []byte
 		content, err = gu.Contents(wasmExecPath, ref)
 		if os.IsNotExist(err) {
@@ -86,6 +89,11 @@ func Build() (err error) {
 	_, err = worktree.Commit("github actions update", &git.CommitOptions{
 		Author: &object.Signature{Name: "mlctrez", Email: "mlctrez@gmail.com", When: time.Now()},
 	})
+
+	environ := os.Environ()
+	for _, s := range environ {
+		fmt.Println(s)
+	}
 
 	err = repo.Push(&git.PushOptions{Auth: &http.BasicAuth{Username: os.Getenv("GITHUB_TOKEN")}})
 	if err != nil {
