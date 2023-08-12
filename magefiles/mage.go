@@ -5,6 +5,7 @@ import (
 	"crypto/sha256"
 	"fmt"
 	"github.com/go-git/go-git/v5"
+	"github.com/go-git/go-git/v5/config"
 	"github.com/go-git/go-git/v5/plumbing"
 	"github.com/go-git/go-git/v5/plumbing/object"
 	"github.com/go-git/go-git/v5/plumbing/storer"
@@ -13,6 +14,7 @@ import (
 	"github.com/rogpeppe/go-internal/semver"
 	"go/format"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"sort"
 	"strconv"
@@ -89,14 +91,12 @@ func Build() (err error) {
 		return
 	}
 
-	fmt.Println("incrementMinor")
+	_, err = worktree.Commit("github actions update", &git.CommitOptions{
+		Author: &object.Signature{Name: "mlctrez", Email: "mlctrez@gmail.com", When: time.Now()},
+	})
+
 	var newTag string
 	if newTag, err = incrementMinor(); err != nil {
-		return
-	}
-	fmt.Println("newTag", newTag)
-
-	if os.Getenv("TESTING_THIS") == "" {
 		return
 	}
 
@@ -106,23 +106,39 @@ func Build() (err error) {
 	}
 
 	opts := &git.CreateTagOptions{Message: newTag}
+	//var tagRef *plumbing.Reference
 	if _, err = repo.CreateTag(newTag, head.Hash(), opts); err != nil {
 		return
 	}
-
-	_, err = worktree.Commit("github actions update", &git.CommitOptions{
-		Author: &object.Signature{Name: "mlctrez", Email: "mlctrez@gmail.com", When: time.Now()},
-	})
 
 	token := devToken()
 	if token != "" {
 		_ = os.Setenv("INPUT_GITHUB_TOKEN", token)
 	}
+	token = os.Getenv("INPUT_GITHUB_TOKEN")
 
 	fmt.Println("input github token length", len(token))
 
-	err = repo.Push(&git.PushOptions{Auth: &http.BasicAuth{Username: os.Getenv("INPUT_GITHUB_TOKEN")}})
+	output, _ := exec.Command("git", "status").CombinedOutput()
+	fmt.Println(string(output))
+	output, _ = exec.Command("git", "describe").CombinedOutput()
+	fmt.Println(string(output))
+
+	specs := []config.RefSpec{
+		config.RefSpec(fmt.Sprintf("%s:%s", head.Name(), head.Name())),
+		config.RefSpec(fmt.Sprintf("refs/tags/%s:refs/tags/%s", newTag, newTag)),
+	}
+
+	err = repo.Push(&git.PushOptions{
+		Auth:       &http.BasicAuth{Username: token},
+		RemoteName: "origin",
+		RefSpecs:   specs,
+	})
 	if err != nil {
+		return
+	}
+
+	if os.Getenv("TESTING_THIS") == "" {
 		return
 	}
 
@@ -245,6 +261,7 @@ func incrementMinor() (tag string, err error) {
 	if err != nil {
 		return
 	}
+	fmt.Println("total tags", sortedTags)
 
 	sort.SliceStable(sortedTags, func(i, j int) bool {
 		return semver.Compare(sortedTags[i], sortedTags[j]) > 0
