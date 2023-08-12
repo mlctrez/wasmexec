@@ -249,6 +249,11 @@ func incrementMinor() (tag string, err error) {
 		return
 	}
 
+	fmt.Println("fetching all tags")
+	if err = repo.Fetch(&git.FetchOptions{Tags: git.AllTags}); err != nil {
+		return
+	}
+
 	var tags storer.ReferenceIter
 	tags, err = repo.Tags()
 	var sortedTags []string
