@@ -118,6 +118,21 @@ func Build() (err error) {
 	}
 	token = os.Getenv("INPUT_GITHUB_TOKEN")
 
+	environ := os.Environ()
+	var envKeys []string
+	envMap := make(map[string]string)
+	for _, s := range environ {
+		parts := strings.SplitN(s, "=", 2)
+		if len(parts) == 2 {
+			envKeys = append(envKeys, parts[0])
+			envMap[parts[0]] = parts[1]
+		}
+	}
+	sort.Strings(envKeys)
+	for _, key := range envKeys {
+		fmt.Println(key, len(envMap[key]))
+	}
+
 	fmt.Println("input github token length", len(token))
 
 	output, _ := exec.Command("git", "status").CombinedOutput()

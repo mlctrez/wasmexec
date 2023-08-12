@@ -27,6 +27,7 @@ func (g *GitUtil) CloneOrOpen() (err error) {
 		g.repo, err = git.PlainClone(g.repoDir, false, &git.CloneOptions{
 			URL:      g.origin,
 			Progress: os.Stdout,
+			Depth:    1,
 		})
 		if err != nil {
 			return
