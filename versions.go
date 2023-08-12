@@ -1,7 +1,7 @@
 package wasmexec
 
 // generated from https://github.com/mlctrez/wasmexec
-// 2023-08-11T22:06:40.343048889-05:00
+// 2023-08-12T03:07:59.646277734Z
 
 import (
 	"fmt"
