@@ -13,6 +13,7 @@ import (
 	"github.com/rogpeppe/go-internal/semver"
 	"go/format"
 	"os"
+	"path/filepath"
 	"sort"
 	"strconv"
 	"strings"
@@ -31,8 +32,11 @@ func Build() (err error) {
 
 	wasmExecPath := "misc/wasm/wasm_exec.js"
 
+	versions := []string{"go1.18", "go1.19", "go1.20", "go1.21"}
+	versions = []string{"go1.21.0"}
+
 	var refs []*plumbing.Reference
-	if refs, err = gu.Tags("go"); err != nil {
+	if refs, err = gu.Tags(versions...); err != nil {
 		return
 	}
 
@@ -90,6 +94,12 @@ func Build() (err error) {
 	if newTag, err = incrementMinor(); err != nil {
 		return
 	}
+	fmt.Println("newTag", newTag)
+
+	if os.Getenv("TESTING_THIS") == "" {
+		return
+	}
+
 	var head *plumbing.Reference
 	if head, err = repo.Head(); err != nil {
 		return
@@ -104,12 +114,32 @@ func Build() (err error) {
 		Author: &object.Signature{Name: "mlctrez", Email: "mlctrez@gmail.com", When: time.Now()},
 	})
 
+	token := devToken()
+	if token != "" {
+		_ = os.Setenv("INPUT_GITHUB_TOKEN", token)
+	}
+
+	fmt.Println("input github token length", len(token))
+
 	err = repo.Push(&git.PushOptions{Auth: &http.BasicAuth{Username: os.Getenv("INPUT_GITHUB_TOKEN")}})
 	if err != nil {
 		return
 	}
 
 	return
+}
+
+func devToken() string {
+	dir, err := os.UserHomeDir()
+	if err != nil {
+		return ""
+	}
+	var tokenBytes []byte
+	tokenBytes, err = os.ReadFile(filepath.Join(dir, ".github_token"))
+	if err != nil {
+		return ""
+	}
+	return strings.TrimSpace(string(tokenBytes))
 }
 
 type SourceFile struct {
@@ -130,7 +160,8 @@ func buildWasmExec(shaMapping map[string]string, contentMapping map[string][]byt
 	sf := &SourceFile{&bytes.Buffer{}}
 
 	sf.line("package wasmexec")
-	sf.line("// generated from https://github.com/mlctrez/wasmexec").line("")
+	sf.line("// generated from https://github.com/mlctrez/wasmexec")
+	sf.line("// " + time.Now().Format(time.RFC3339Nano)).line("")
 	sf.line("import (").line(`"fmt"`).line(`"runtime"`).line(")")
 
 	sf.line("func Current() (content []byte, err error) {")
@@ -219,8 +250,8 @@ func incrementMinor() (tag string, err error) {
 		return semver.Compare(sortedTags[i], sortedTags[j]) > 0
 	})
 
-	fmt.Println("sorted tags")
-	fmt.Println(strings.Join(sortedTags, ","))
+	//fmt.Println("sorted tags")
+	//fmt.Println(strings.Join(sortedTags, ","))
 
 	latest := sortedTags[0]
 
@@ -234,7 +265,9 @@ func incrementMinor() (tag string, err error) {
 
 	split[2] = fmt.Sprintf("%s", fmt.Sprintf("%d", i+1))
 
-	tag = fmt.Sprintf("v%s.%s.%s", split[0], split[1], split[2])
+	tag = fmt.Sprintf("%s.%s.%s", split[0], split[1], split[2])
+
+	fmt.Println("previous", latest, "new", tag)
 
 	return
 }
