@@ -114,9 +114,9 @@ func Build() (err error) {
 
 	token := devToken()
 	if token != "" {
-		_ = os.Setenv("INPUT_GITHUB_TOKEN", token)
+		_ = os.Setenv("ACTIONS_TOKEN", token)
 	}
-	token = os.Getenv("INPUT_GITHUB_TOKEN")
+	token = os.Getenv("ACTIONS_TOKEN")
 
 	environ := os.Environ()
 	var envKeys []string
@@ -267,7 +267,9 @@ func incrementMinor() (tag string, err error) {
 
 	fmt.Println("fetching all tags")
 	if err = repo.Fetch(&git.FetchOptions{Tags: git.AllTags}); err != nil {
-		return
+		if "already up-to-date" != err.Error() {
+			return
+		}
 	}
 
 	var tags storer.ReferenceIter
