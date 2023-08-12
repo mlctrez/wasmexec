@@ -91,9 +91,10 @@ func Build() (err error) {
 		return
 	}
 
-	_, err = worktree.Commit("github actions update", &git.CommitOptions{
-		Author: &object.Signature{Name: "mlctrez", Email: "mlctrez@gmail.com", When: time.Now()},
-	})
+	signature := &object.Signature{Name: "mlctrez", Email: "mlctrez@gmail.com", When: time.Now()}
+	if _, err = worktree.Commit("github actions update", &git.CommitOptions{Author: signature}); err != nil {
+		return
+	}
 
 	var newTag string
 	if newTag, err = incrementMinor(); err != nil {
@@ -105,7 +106,7 @@ func Build() (err error) {
 		return
 	}
 
-	opts := &git.CreateTagOptions{Message: newTag}
+	opts := &git.CreateTagOptions{Message: newTag, Tagger: signature}
 	//var tagRef *plumbing.Reference
 	if _, err = repo.CreateTag(newTag, head.Hash(), opts); err != nil {
 		return
