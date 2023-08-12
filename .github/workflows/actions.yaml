@@ -25,6 +25,8 @@ jobs:
           go-version: 1.18
       - name: Run Mage
         uses: magefile/mage-action@v2
+        env:
+          ACTIONS_TOKEN: ${{ secrets.ACTIONS_TOKEN }}
         with:
           version: latest
           args: build
