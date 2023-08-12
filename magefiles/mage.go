@@ -33,11 +33,8 @@ func Build() (err error) {
 
 	wasmExecPath := "misc/wasm/wasm_exec.js"
 
-	versions := []string{"go1.18", "go1.19", "go1.20", "go1.21"}
-	versions = []string{"go1.21.0"}
-
 	var refs []*plumbing.Reference
-	if refs, err = gu.Tags(versions...); err != nil {
+	if refs, err = gu.Tags("go"); err != nil {
 		return
 	}
 

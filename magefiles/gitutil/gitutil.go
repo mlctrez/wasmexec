@@ -44,18 +44,15 @@ func (g *GitUtil) CloneOrOpen() (err error) {
 	return nil
 }
 
-func (g *GitUtil) Tags(prefixes ...string) (refs []*plumbing.Reference, err error) {
+func (g *GitUtil) Tags(prefix string) (refs []*plumbing.Reference, err error) {
 	var iter storer.ReferenceIter
 	if iter, err = g.repo.Tags(); err != nil {
 		return
 	}
 	err = iter.ForEach(func(reference *plumbing.Reference) error {
 		shortName := reference.Name().Short()
-		for _, prefix := range prefixes {
-			if strings.HasPrefix(shortName, prefix) {
-				refs = append(refs, reference)
-				return nil
-			}
+		if strings.HasPrefix(shortName, prefix) {
+			refs = append(refs, reference)
 		}
 		return nil
 	})
