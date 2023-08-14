@@ -17,13 +17,13 @@ at `misc/wasm/wasm_exec.js`.
 ```go
 
 http.HandleFunc("/wasm_exec.js", func (writer http.ResponseWriter, request *http.Request) {
-content, err := wasmexec.Current()
-if err != nil {
-writer.WriteHeader(http.StatusInternalServerError)
-return
-}
-writer.Header().Set("Content-Type", "application/javascript")
-_, _ = writer.Write(content)
+    content, err := wasmexec.Current()
+    if err != nil {
+        writer.WriteHeader(http.StatusInternalServerError)
+        return
+    }
+    writer.Header().Set("Content-Type", "application/javascript")
+    _, _ = writer.Write(content)
 })
 
 ```
