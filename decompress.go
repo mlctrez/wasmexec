@@ -7,13 +7,31 @@ import (
 	"fmt"
 	"io"
 	"runtime"
+	"sync"
 )
+
+var mu = &sync.Mutex{}
+var cached map[string][]byte
 
 func Current() (content []byte, err error) {
 	return Version(runtime.Version())
 }
 
 func Version(version string) (contents []byte, err error) {
+	mu.Lock()
+	defer mu.Unlock()
+	if cached == nil {
+		cached = make(map[string][]byte)
+	}
+	var data []byte
+	if data, err = readContents(version); err != nil {
+		return nil, err
+	}
+	cached[version] = data
+	return data, nil
+}
+
+func readContents(version string) (contents []byte, err error) {
 
 	wantedSha := TagToSha(version)
 	if wantedSha == "" {
