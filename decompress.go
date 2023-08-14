@@ -2,6 +2,7 @@ package wasmexec
 
 import (
 	"bytes"
+	"compress/zlib"
 	"crypto/sha256"
 	"encoding/binary"
 	"fmt"
@@ -20,6 +21,7 @@ func Current() (content []byte, err error) {
 func Version(version string) (contents []byte, err error) {
 	mu.Lock()
 	defer mu.Unlock()
+
 	if cached == nil {
 		cached = make(map[string][]byte)
 	}
@@ -32,7 +34,6 @@ func Version(version string) (contents []byte, err error) {
 }
 
 func readContents(version string) (contents []byte, err error) {
-
 	wantedSha := TagToSha(version)
 	if wantedSha == "" {
 		return nil, fmt.Errorf("unsupported version %q", version)
@@ -43,7 +44,8 @@ func readContents(version string) (contents []byte, err error) {
 	var length int64
 	var read int
 
-	reader := bytes.NewBuffer(contents)
+	var reader io.ReadCloser
+	reader, err = zlib.NewReader(bytes.NewBuffer(compressed))
 
 	if err = binary.Read(reader, binary.BigEndian, &total); err != nil {
 		return nil, err
@@ -57,15 +59,14 @@ func readContents(version string) (contents []byte, err error) {
 		if read != 32 {
 			return nil, fmt.Errorf("unable to read full sha")
 		}
-
 		if err = binary.Read(reader, binary.BigEndian, &length); err != nil {
 			return nil, err
 		}
-		content := make([]byte, length)
-		if read, err = io.ReadFull(reader, content); err != nil {
+
+		contents = make([]byte, length)
+		if read, err = io.ReadFull(reader, contents); err != nil {
 			return nil, err
 		}
-
 		if read != int(length) {
 			return nil, fmt.Errorf("unable to read full content, expected %d but read only %d", length, read)
 		}
@@ -81,7 +82,7 @@ func readContents(version string) (contents []byte, err error) {
 		return nil, fmt.Errorf("data did not end conrrectly")
 	}
 
-	return nil, fmt.Errorf("unable to match sha")
+	return nil, fmt.Errorf("unable to match sha %q", wantedSha)
 
 }
 

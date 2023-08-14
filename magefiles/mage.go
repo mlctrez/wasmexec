@@ -6,7 +6,9 @@ import (
 	"github.com/mlctrez/wasmexec/gitver"
 	"github.com/mlctrez/wasmexec/shautil"
 	"github.com/mlctrez/wasmexec/sourcefile"
+	"github.com/pkg/errors"
 	"os"
+	"os/exec"
 )
 
 var Default = Build
@@ -47,6 +49,12 @@ func Build() (err error) {
 
 	if err = os.WriteFile("versions.go", content, 0644); err != nil {
 		return
+	}
+
+	var testOutput []byte
+	testOutput, err = exec.Command("go", "test").CombinedOutput()
+	if err != nil {
+		return errors.WithMessage(err, string(testOutput))
 	}
 
 	var gu *gitutil.GitUtil
