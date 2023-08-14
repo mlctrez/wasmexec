@@ -171,7 +171,6 @@ func (g *gitVer) compress() error {
 }
 
 func (g *gitVer) tagToSha(sf *sourcefile.SourceFile) {
-	sf.L("func TagToSha(tag string) string {")
 	sf.L("var tagToShaMap = map[string]string{")
 
 	for _, tag := range g.tags {
@@ -179,7 +178,9 @@ func (g *gitVer) tagToSha(sf *sourcefile.SourceFile) {
 			sf.L(fmt.Sprintf("%q:%q,", tag, sha))
 		}
 	}
-	sf.L("}")
+	sf.L("}").L("")
+
+	sf.L("func TagToSha(tag string) string {")
 	sf.L("return tagToShaMap[tag]")
 	sf.L("}")
 }
