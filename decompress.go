@@ -25,7 +25,13 @@ func Version(version string) (contents []byte, err error) {
 	if cached == nil {
 		cached = make(map[string][]byte)
 	}
+
 	var data []byte
+	var ok bool
+	if data, ok = cached[version]; ok {
+		return data, nil
+	}
+
 	if data, err = readContents(version); err != nil {
 		return nil, err
 	}
