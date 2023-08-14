@@ -1,5 +1,7 @@
 package wasmexec
 
+// comment to trigger build
+
 func TagToSha(tag string) string {
 	var tagToShaMap = map[string]string{
 		"go1.11":      "46ea07e1b594c1d5b163d875c54fac43b5d878f109c4e9ed5801bce20355b3c2",
