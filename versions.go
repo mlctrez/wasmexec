@@ -192,6 +192,7 @@ var tagToShaMap = map[string]string{
 	"go1.21rc3":   "45ce9dfe7211247544ab6f4268eb8cb5b6f3d5ae602dc3b51447b7eada99c229",
 	"go1.21rc4":   "45ce9dfe7211247544ab6f4268eb8cb5b6f3d5ae602dc3b51447b7eada99c229",
 	"go1.22rc1":   "45ce9dfe7211247544ab6f4268eb8cb5b6f3d5ae602dc3b51447b7eada99c229",
+	"go1.22rc2":   "45ce9dfe7211247544ab6f4268eb8cb5b6f3d5ae602dc3b51447b7eada99c229",
 }
 
 func TagToSha(tag string) string {
