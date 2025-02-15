@@ -24,14 +24,14 @@ type GitVer interface {
 	Versions(sf *sourcefile.SourceFile) error
 }
 
-func New(repository, tempDir, path, tagPrefix string) GitVer {
-	return &gitVer{repository: repository, tempDir: tempDir, path: path, tagPrefix: tagPrefix}
+func New(repository, tempDir string, paths []string, tagPrefix string) GitVer {
+	return &gitVer{repository: repository, tempDir: tempDir, paths: paths, tagPrefix: tagPrefix}
 }
 
 type gitVer struct {
 	repository string
 	tempDir    string
-	path       string
+	paths      []string
 	tagPrefix  string
 
 	tags         []string
@@ -99,28 +99,31 @@ func (g *gitVer) getTags() error {
 
 func (g *gitVer) getMappings() error {
 	for _, tag := range g.tags {
+		for _, path := range g.paths {
 
-		command := exec.Command("git", "checkout", tag, g.path)
-		command.Dir = g.tempDir
+			command := exec.Command("git", "checkout", tag, path)
+			command.Dir = g.tempDir
 
-		var err error
-		var output []byte
-		if output, err = command.CombinedOutput(); err != nil {
-			outputMessage := string(output)
-			if strings.Contains(outputMessage, "did not match any file(s) known to git") {
-				continue
+			var err error
+			var output []byte
+			if output, err = command.CombinedOutput(); err != nil {
+				outputMessage := string(output)
+				if strings.Contains(outputMessage, "did not match any file(s) known to git") {
+					continue
+				}
+				return errors.WithMessage(err, outputMessage)
 			}
-			return errors.WithMessage(err, outputMessage)
+
+			var content []byte
+			if content, err = os.ReadFile(filepath.Join(g.tempDir, path)); err != nil {
+				return err
+			}
+
+			sha := shautil.ShaString(content)
+			g.shaToContent[sha] = content
+			g.tagMapping[tag] = sha
 		}
 
-		var content []byte
-		if content, err = os.ReadFile(filepath.Join(g.tempDir, g.path)); err != nil {
-			return err
-		}
-
-		sha := shautil.ShaString(content)
-		g.shaToContent[sha] = content
-		g.tagMapping[tag] = sha
 	}
 
 	return nil
