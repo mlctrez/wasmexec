@@ -2,10 +2,13 @@ package main
 
 import (
 	"fmt"
+	"github.com/mlctrez/wasmexec/gitutil"
 	"github.com/mlctrez/wasmexec/gitver"
 	"github.com/mlctrez/wasmexec/shautil"
 	"github.com/mlctrez/wasmexec/sourcefile"
+	"github.com/pkg/errors"
 	"os"
+	"os/exec"
 )
 
 var Default = Build
@@ -48,23 +51,22 @@ func Build() (err error) {
 		return
 	}
 
-	//var testOutput []byte
-	//testOutput, err = exec.Command("go", "test").CombinedOutput()
-	//if err != nil {
-	//	return errors.WithMessage(err, string(testOutput))
-	//}
-	//
-	//var gu *gitutil.GitUtil
-	//if gu, err = gitutil.Open("."); err != nil {
-	//	return
-	//}
-	//
-	//gu.Signature("mlctrez", "mlctrez@gmail.com")
-	//
-	//if err = gu.Add("versions.go", "ci update"); err != nil {
-	//	return
-	//}
-	//
-	//return gu.PushNewVersion()
-	return nil
+	var testOutput []byte
+	testOutput, err = exec.Command("go", "test").CombinedOutput()
+	if err != nil {
+		return errors.WithMessage(err, string(testOutput))
+	}
+
+	var gu *gitutil.GitUtil
+	if gu, err = gitutil.Open("."); err != nil {
+		return
+	}
+
+	gu.Signature("mlctrez", "mlctrez@gmail.com")
+
+	if err = gu.Add("versions.go", "ci update"); err != nil {
+		return
+	}
+
+	return gu.PushNewVersion()
 }
