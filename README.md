@@ -10,7 +10,7 @@ filesystem.
 This module provides a means to source the correct wasm_exec.js content programmatically.
 
 The golang source repository is scanned nightly and the current tags in the repository are mapped to the correct content
-at `misc/wasm/wasm_exec.js`.
+at `misc/wasm/wasm_exec.js`. For go1.24 or later, the path `lib/wasm/wasm_exec.js` is also checked. 
 
 ## Example
 
